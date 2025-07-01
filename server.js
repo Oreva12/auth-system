@@ -10,7 +10,7 @@ app.use(express.json());
 // Registration Endpoint
 app.post('/register', async (req, res) => {
     try {
-      console.log('Received body:', req.body); // Add this line
+      console.log('Received body:', req.body);
       
       if (!req.body || !req.body.email || !req.body.password) {
         return res.status(400).json({ error: "Email and password are required" });
@@ -19,7 +19,7 @@ app.post('/register', async (req, res) => {
       const { email, password } = req.body;
       const hashedPassword = await bcrypt.hash(password, 10);
       
-      console.log('Attempting to insert:', email); // Add this line
+      console.log('Attempting to insert:', email);
       
       const [result] = await pool.execute(
         'INSERT INTO users (email, password) VALUES (?, ?)',
@@ -28,10 +28,17 @@ app.post('/register', async (req, res) => {
       
       res.status(201).json({ id: result.insertId, email });
     } catch (err) {
-      console.error('Registration error:', err); // Enhanced error logging
-      res.status(500).json({ error: err.message }); // Return actual error message
+      console.error('Registration error:', err);
+      
+      // Improved error response
+      res.status(500).json({ 
+        error: "Registration failed",
+        details: err.code === 'ER_DUP_ENTRY'  // Special handling for duplicate emails
+          ? "Email already exists"            // User-friendly message
+          : err.message                      // Technical details for debugging
+      });
     }
-  });
+});
 
 // Login Endpoint
 app.post('/login', async (req, res) => {
@@ -55,13 +62,22 @@ app.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
     
-    // Create token
-    const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+    // Create token with 1-hour expiration
+    const token = jwt.sign(
+      { userId: user.id }, 
+      process.env.JWT_SECRET, 
+      { expiresIn: '1h' }
+    );
     
     res.json({ token });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Login failed' });
+    
+    // Improved error response
+    res.status(500).json({ 
+      error: "Login failed",
+      systemMessage: err.message  // Provides technical details for debugging
+    });
   }
 });
 
