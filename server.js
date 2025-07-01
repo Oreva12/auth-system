@@ -3,42 +3,98 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const pool = require('./db');
+const { check, validationResult } = require('express-validator');
+const rateLimit = require('express-rate-limit');
+const helmet = require('helmet');
+
 
 const app = express();
 app.use(express.json());
+app.use(helmet());
+
+// Rate limiting: 100 requests per 15 minutes
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, 
+  max: 100,
+  message: 'Too many requests, please try again later.'
+});
+app.use(limiter);
 
 // Registration Endpoint
-app.post('/register', async (req, res) => {
-    try {
-      console.log('Received body:', req.body);
-      
-      if (!req.body || !req.body.email || !req.body.password) {
-        return res.status(400).json({ error: "Email and password are required" });
-      }
+app.post('/register', 
+    [
+      // Email validation
+      check('email')
+        .isEmail()
+        .withMessage('Please provide a valid email')
+        .normalizeEmail(),
+        
+      // Password validation
+      check('password')
+        .isLength({ min: 8 })
+        .withMessage('Password must be at least 8 characters')
+        .matches(/[0-9]/)
+        .withMessage('Password must contain a number')
+        .matches(/[a-zA-Z]/)
+        .withMessage('Password must contain a letter')
+    ],
+    async (req, res) => {
+      try {
+        // Check for validation errors
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+          return res.status(400).json({ 
+            error: 'Validation failed',
+            details: errors.array().map(err => ({
+              field: err.param,
+              message: err.msg
+            }))
+          });
+        }
   
-      const { email, password } = req.body;
-      const hashedPassword = await bcrypt.hash(password, 10);
-      
-      console.log('Attempting to insert:', email);
-      
-      const [result] = await pool.execute(
-        'INSERT INTO users (email, password) VALUES (?, ?)',
-        [email, hashedPassword]
-      );
-      
-      res.status(201).json({ id: result.insertId, email });
-    } catch (err) {
-      console.error('Registration error:', err);
-      
-      // Improved error response
-      res.status(500).json({ 
-        error: "Registration failed",
-        details: err.code === 'ER_DUP_ENTRY'  // Special handling for duplicate emails
-          ? "Email already exists"            // User-friendly message
-          : err.message                      // Technical details for debugging
-      });
+        const { email, password } = req.body;
+        
+        // Check if user already exists
+        const [existingUsers] = await pool.execute(
+          'SELECT id FROM users WHERE email = ?', 
+          [email]
+        );
+        
+        if (existingUsers.length > 0) {
+          return res.status(409).json({
+            error: 'Registration failed',
+            details: 'Email already in use'
+          });
+        }
+  
+        // Hash password and create user
+        const hashedPassword = await bcrypt.hash(password, 10);
+        const [result] = await pool.execute(
+          'INSERT INTO users (email, password) VALUES (?, ?)',
+          [email, hashedPassword]
+        );
+  
+        res.status(201).json({ 
+          success: true,
+          user: { 
+            id: result.insertId, 
+            email 
+          }
+        });
+  
+      } catch (err) {
+        console.error('Registration error:', err);
+        
+        // Improved error response
+        res.status(500).json({
+          error: 'Registration failed',
+          details: process.env.NODE_ENV === 'development' 
+            ? err.message 
+            : 'Please try again later'
+        });
+      }
     }
-});
+  );
 
 // Login Endpoint
 app.post('/login', async (req, res) => {
@@ -80,6 +136,8 @@ app.post('/login', async (req, res) => {
     });
   }
 });
+
+
 
 // Start server
 app.listen(process.env.PORT, () => {
