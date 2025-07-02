@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Auth Demo</title>
+  <style>
+    body { font-family: sans-serif; padding: 2rem; }
+    form { margin-bottom: 2rem; }
+    input { display: block; margin: 0.5rem 0; padding: 0.5rem; width: 100%; max-width: 300px; }
+    button { padding: 0.5rem 1rem; }
+    #message { margin-top: 1rem; color: green; }
+    #error { margin-top: 1rem; color: red; }
+  </style>
+</head>
+<body>
+  <h1>Simple Auth UI</h1>
+
+  <h2>Register</h2>
+  <form id="register-form">
+    <input type="email" id="reg-email" placeholder="Email" required>
+    <input type="password" id="reg-password" placeholder="Password" required>
+    <button type="submit">Register</button>
+  </form>
+
+  <h2>Login</h2>
+  <form id="login-form">
+    <input type="email" id="login-email" placeholder="Email" required>
+    <input type="password" id="login-password" placeholder="Password" required>
+    <button type="submit">Login</button>
+  </form>
+
+  <div id="mfa-section" style="display:none;">
+    <h2>Enter MFA Code</h2>
+    <input type="text" id="mfa-token" placeholder="MFA Code">
+    <button id="verify-mfa-btn">Verify MFA</button>
+  </div>
+
+  <hr>
+<h2>Setup MFA</h2>
+<form id="mfa-setup-form">
+  <input type="text" id="mfa-user-id" placeholder="User ID (numeric)" required>
+  <button type="submit">Generate MFA Setup</button>
+</form>
+
+<div id="mfa-setup-result" style="display:none;">
+  <p><strong>Scan this QR code with Google Authenticator:</strong></p>
+  <img id="qr-code" src="" alt="MFA QR Code" width="200">
+  <p><strong>Manual Entry Code:</strong> <span id="manual-code"></span></p>
+  <p><strong>Backup Codes:</strong> <pre id="backup-codes"></pre></p>
+</div>
+
+
+  <div id="message"></div>
+  <div id="error"></div>
+
+  <script src="script.js"></script>
+</body>
+</html>

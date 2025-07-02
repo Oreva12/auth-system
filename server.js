@@ -1,4 +1,5 @@
 require('dotenv').config();
+const path = require('path');
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
@@ -11,6 +12,7 @@ const QRCode = require('qrcode');
 const crypto = require('crypto'); // Added for backup codes
 
 const app = express();
+app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 app.use(helmet());
 
@@ -32,7 +34,7 @@ function generateBackupCodes(count = 10) {
   );
 }
 
-// ============ REGISTRATION & EMAIL VERIFICATION (UNCHANGED) ============
+// ============ REGISTRATION & EMAIL VERIFICATION ============
 app.post('/register', 
   [
     check('email').isEmail().normalizeEmail(),
@@ -84,7 +86,7 @@ app.get('/verify-email', async (req, res) => {
   }
 });
 
-// ============ UPDATED MFA ENDPOINTS WITH BACKUP CODES ============
+// ============ MFA ENDPOINTS WITH BACKUP CODES ============
 app.post('/mfa/setup', async (req, res) => {
   try {
     const { userId } = req.body;
@@ -159,7 +161,7 @@ app.post('/mfa/verify', async (req, res) => {
   }
 });
 
-// ============ UPDATED LOGIN FLOW WITH BACKUP CODE SUPPORT ============
+// ============ LOGIN FLOW WITH BACKUP CODE SUPPORT ============
 app.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -206,7 +208,7 @@ app.post('/login', async (req, res) => {
   }
 });
 
-// ============ UPDATED MFA FINALIZE WITH BACKUP CODE OPTION ============
+// ============ MFA FINALIZE WITH BACKUP CODE OPTION ============
 app.post('/mfa/finalize', async (req, res) => {
   try {
     const { tempToken, mfaToken, useBackupCode } = req.body;
